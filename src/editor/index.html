@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta
+    name="robots"
+    content="noindex"
+  /><title>Markdown workbench — Tadtaev</title
+  ><link rel="stylesheet" href="/style.css" /><style>
+    .shell {
+      max-width: 1100px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin: 12px 0;
+    }
+    input,
+    textarea,
+    button {
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 10px;
+    }
+    input,
+    textarea {
+      width: 100%;
+    }
+    textarea {
+      height: 360px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      margin: 14px 8px 14px 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <div class="shell">
+    <header><a href="/">← Notebook</a><span>Markdown workbench</span></header>
+    <main>
+      <h1>Write a note.</h1>
+      <p>
+        This local workbench previews Markdown and downloads a post file. To publish, commit it to
+        <code>content/posts/</code> and rebuild. Files stay in your browser; nothing is uploaded.
+      </p>
+      <label>Open Markdown file<input id="file" type="file" accept=".md,text/markdown" /></label>
+      <div class="grid">
+        <section>
+          <label>Title<input id="title" value="A new note" /></label><label>Date<input id="date" type="date" /></label
+          ><label>Description<input id="description" value="A short description of this note." /></label
+          ><label>Filename / URL slug<input id="slug" value="a-new-note" pattern="[a-z0-9]+(-[a-z0-9]+)*" /></label
+          ><label
+            >Markdown<textarea id="body">
+## Start with a question
+
+What are you thinking about?</textarea></label
+          ><button id="download">Download .md</button>
+          <p id="status" role="status"></p>
+        </section>
+        <section>
+          <p class="eyebrow">PREVIEW</p>
+          <h2 id="preview-title"></h2>
+          <div id="preview" class="prose"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script type="module">
+    import { marked } from "/vendor/marked.js";
+    import DOMPurify from "/vendor/purify.js";
+    import { dump, load } from "/vendor/js-yaml.js";
+
+    const $ = (id) => document.getElementById(id);
+    // Same rules as before: no images, scripts, embeds, forms or SVG/MathML; only http(s), root-relative and
+    // fragment links; no attributes besides href, src, alt and title.
+    const sanitizeOptions = {
+      FORBID_TAGS: ["style", "form", "input", "button", "img", "svg", "math"],
+      ALLOWED_ATTR: ["href", "src", "alt", "title"],
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false,
+      ALLOWED_URI_REGEXP: /^(?:https?:|\/|#)/i,
+    };
+    // Front matter fields from an opened file, kept so saving does not drop draft or other keys.
+    let frontMatter = {};
+
+    function render() {
+      $("preview-title").textContent = $("title").value;
+      $("preview").innerHTML = DOMPurify.sanitize(marked.parse($("body").value), sanitizeOptions);
+    }
+
+    $("file").onchange = async () => {
+      const file = $("file").files[0];
+      if (!file) return;
+      const text = await file.text();
+      const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+      frontMatter = match ? (load(match[1]) ?? {}) : {};
+      for (const key of ["title", "date", "description"]) if (key in frontMatter) $(key).value = frontMatter[key];
+      $("body").value = match ? text.slice(match[0].length) : text;
+      $("slug").value = file.name.replace(/\.md$/, "");
+      render();
+    };
+
+    $("download").onclick = () => {
+      const slug = $("slug").value;
+      if (
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ||
+        !$("title").value.trim() ||
+        !$("date").value ||
+        !$("description").value.trim()
+      ) {
+        $("status").textContent = "Complete the fields and use a lowercase slug with hyphens.";
+        return;
+      }
+      const data = { ...frontMatter, title: $("title").value, date: $("date").value, description: $("description").value };
+      const yaml = dump(data, { forceQuotes: true, quoteStyle: "double", lineWidth: -1 });
+      const url = URL.createObjectURL(new Blob([`---\n${yaml}---\n\n${$("body").value}\n`], { type: "text/markdown" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug}.md`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      $("status").textContent = "Downloaded. Add the file to content/posts/ to publish.";
+    };
+
+    $("date").value = new Date().toISOString().slice(0, 10);
+    for (const id of ["body", "title"]) $(id).addEventListener("input", render);
+    render();
+  </script>
+</html>

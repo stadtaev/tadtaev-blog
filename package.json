@@ -1,1 +1,33 @@
-{"name":"tadtaev-blog","private":true,"type":"module","scripts":{"build":"node src/build.ts","check":"tsc --noEmit"},"dependencies":{"gray-matter":"4.0.3","marked":"15.0.12"},"devDependencies":{"@types/node":"24.0.0","typescript":"5.8.3"}}
+{
+  "name": "tadtaev-blog",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node --watch-path=content --watch-path=public --watch-path=src src/build.ts --drafts --out .dev --origin http://localhost:4321 & serve .dev --listen 4321 --no-clipboard --no-request-logging --no-port-switching",
+    "build": "node src/build.ts",
+    "check": "tsc --noEmit",
+    "test": "node --test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "npm run check && npm run format:check && npm test && npm run build"
+  },
+  "dependencies": {
+    "@11ty/gray-matter": "3.0.0",
+    "dompurify": "3.4.16",
+    "js-yaml": "5.4.2",
+    "marked": "18.1.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "prettier": "3.9.10",
+    "serve": "14.2.6",
+    "typescript": "7.0.2"
+  },
+  "overrides": {
+    "compression": "1.8.2"
+  }
+}

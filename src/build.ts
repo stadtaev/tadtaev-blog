@@ -1,32 +1,82 @@
-import { mkdir, readdir, readFile, writeFile, cp, rm } from 'node:fs/promises';
-import matter from 'gray-matter';
-import { marked } from 'marked';
-const origin = process.env.SITE_URL || 'https://tadtaev.dev';
-const escape = (s: string) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-type Post = {title: string; date: string; description: string; slug: string; content: string; minutes: number};
-const posts: Post[] = [];
-for (const file of await readdir('content/posts')) {
-  if (!file.endsWith('.md')) continue;
-  const { data, content } = matter(await readFile(`content/posts/${file}`, 'utf8'));
-  if (data.draft === true) continue;
-  const slug = file.slice(0,-3);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw Error(`Invalid filename: ${file}`);
-  for (const key of ['title','date','description']) if (typeof data[key] !== 'string' || !data[key].trim()) throw Error(`${file}: ${key} must be a quoted, non-empty string`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date) || Number.isNaN(Date.parse(data.date)) || new Date(data.date).toISOString().slice(0,10) !== data.date) throw Error(`${file}: invalid date`);
-  posts.push({title:data.title,date:data.date,description:data.description,slug,content,minutes:Math.max(1,Math.ceil(content.split(/\s+/).length/220))});
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
+import { editorVendor, paths, site } from "./config.ts";
+import { loadPages, loadPosts } from "./content.ts";
+import { robotsTxt, rssFeed, sitemap } from "./templates/feeds.ts";
+import type { RenderContext } from "./templates/layout.ts";
+import { contentPage, homePage, notFoundPage, pagePath, postPage, postPath } from "./templates/pages.ts";
+
+export type BuildOptions = {
+  outDir?: string;
+  origin?: string;
+  /** Render draft posts too. Used by the dev server. */
+  includeDrafts?: boolean;
+};
+
+async function write(file: string, contents: string): Promise<void> {
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, contents);
 }
-posts.sort((a,b)=>b.date.localeCompare(a.date)||a.slug.localeCompare(b.slug));
-const date = (s:string) => new Date(s+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
-function page(title:string,desc:string,path:string,body:string){return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}${title==='Stanislav Tadtaev'?'':' — Stanislav Tadtaev'}</title><meta name="description" content="${escape(desc)}"><meta name="color-scheme" content="light dark"><link rel="canonical" href="${escape(origin+path)}"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(desc)}"><meta property="og:type" content="${path.startsWith('/posts/')?'article':'website'}"><meta property="og:url" content="${escape(origin+path)}"><link rel="stylesheet" href="/style.css"><link rel="alternate" type="application/rss+xml" title="Stanislav Tadtaev" href="/feed.xml"></head><body><div class="shell"><header><a class="wordmark" href="/">tadtaev<span>.dev</span></a><nav aria-label="Main"><a href="/" ${path==='/'?'aria-current="page"':''}>Writing</a><a href="/about/" ${path==='/about/'?'aria-current="page"':''}>About</a><a href="/feed.xml">RSS <span aria-hidden="true">↗</span></a></nav></header><main id="main">${body}</main><footer><span>© ${new Date().getUTCFullYear()} Stanislav Tadtaev</span><span>Thoughtfully built. Simply written.</span></footer></div></body></html>`;}
-await rm('dist',{recursive:true,force:true});await mkdir('dist',{recursive:true});await cp('public','dist',{recursive:true});
-async function save(path:string,text:string){await mkdir(`dist/${path}`,{recursive:true});await writeFile(`dist/${path}/index.html`,text);}
-const rows=posts.map(p=>`<article class="post"><div class="meta"><time datetime="${p.date}">${date(p.date)}</time><span>${p.minutes} min read</span></div><h2><a href="/posts/${p.slug}/">${escape(p.title)}</a></h2><p>${escape(p.description)}</p></article>`).join('');
-await save('',page('Stanislav Tadtaev','Notes on software, systems and knowledge.','/',`<section class="intro"><p class="eyebrow">A PERSONAL NOTEBOOK</p><h1>Stanislav Tadtaev<span class="dot">.</span></h1><p class="lede">Notes on software, systems,<br class="desktop"> and making knowledge useful.</p><p class="intro-note">A software engineer thinking out loud about architecture,<br class="desktop"> .NET, TypeScript, and AI-assisted engineering.</p></section><section aria-label="Recent writing"><div class="section-label"><span>WRITING</span><span>${String(posts.length).padStart(2,'0')} NOTES</span></div>${rows||'<p>No published notes yet.</p>'}</section>`));
-for(const p of posts) await save(`posts/${p.slug}`,page(p.title,p.description,`/posts/${p.slug}/`,`<a class="back" href="/">← All writing</a><article class="reading"><div class="meta"><time datetime="${p.date}">${date(p.date)}</time><span>${p.minutes} min read</span></div><h1>${escape(p.title)}</h1><p class="article-description">${escape(p.description)}</p><div class="prose">${marked.parse(p.content)}</div><div class="article-end">Thanks for reading.<br><a href="/">← Back to the notebook</a></div></article>`));
-await save('about',page('About','About Stanislav Tadtaev.','/about/',`<p class="eyebrow">THE PERSON BEHIND THE NOTES</p><h1>Hi, I’m Stanislav<span class="dot">.</span></h1><div class="prose about"><p>I’m a software engineer with a background in .NET and full-stack development.</p><p>This is my notebook for ideas about software architecture, distributed systems, knowledge engineering, and the practical use of AI in engineering teams.</p><h2>What I’m exploring</h2><p>How can we make software easier to understand, verify and maintain? How can teams turn scattered knowledge into something useful? And how do we keep our judgement as our tools become more capable?</p><p>I write to work through these questions, share what I learn, and make room for better answers.</p><a href="/">Read the notebook →</a></div>`));
-await writeFile('dist/404.html',page('Page not found','This page could not be found.','/404.html','<h1>Nothing here. Yet.</h1><p>The page may have moved.</p><a href="/">← Back to writing</a>'));
-await writeFile('dist/feed.xml',`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Stanislav Tadtaev</title><link>${escape(origin)}</link><description>Notes on software, systems and knowledge.</description>${posts.map(p=>`<item><title>${escape(p.title)}</title><link>${escape(origin)}/posts/${p.slug}/</link><guid>${escape(origin)}/posts/${p.slug}/</guid><description>${escape(p.description)}</description><pubDate>${new Date(p.date+'T12:00:00Z').toUTCString()}</pubDate></item>`).join('')}</channel></rss>`);
-await writeFile('dist/sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${['/','/about/',...posts.map(p=>`/posts/${p.slug}/`)].map(path=>`<url><loc>${escape(origin+path)}</loc></url>`).join('')}</urlset>`);
-await writeFile('dist/robots.txt',`User-agent: *\nAllow: /\nDisallow: /editor/\nSitemap: ${origin}/sitemap.xml\n`);
-await mkdir('dist/editor',{recursive:true});await cp('src/editor.html','dist/editor/index.html');await mkdir('dist/vendor',{recursive:true});await cp('node_modules/marked/lib/marked.umd.js','dist/vendor/marked.js');
-console.log(`Built ${posts.length} posts.`);
+
+export async function build({
+  outDir = "dist",
+  origin = site.defaultOrigin,
+  includeDrafts = false,
+}: BuildOptions = {}): Promise<{ posts: number; pages: number }> {
+  // Load everything before touching outDir, so invalid content leaves the previous build intact.
+  const [posts, contentPages] = await Promise.all([
+    loadPosts(paths.posts, { includeDrafts }),
+    loadPages(paths.pages, { includeDrafts }),
+  ]);
+  const published = posts.filter((post) => !post.draft);
+  const publishedPages = contentPages.filter((page) => !page.draft);
+  const ctx: RenderContext = {
+    origin: origin.replace(/\/$/, ""),
+    nav: contentPages
+      .filter((page) => page.nav !== undefined)
+      .map((page) => ({ href: pagePath(page), label: page.title })),
+  };
+
+  await rm(outDir, { recursive: true, force: true });
+  await cp(paths.public, outDir, { recursive: true });
+
+  const files: Record<string, string> = {
+    "index.html": homePage(posts, ctx),
+    "404.html": notFoundPage(ctx),
+    "feed.xml": rssFeed(published, ctx),
+    "sitemap.xml": sitemap(["/", ...publishedPages.map(pagePath), ...published.map(postPath)], ctx),
+    "robots.txt": robotsTxt(ctx),
+  };
+  for (const page of contentPages) files[`${page.slug}/index.html`] = contentPage(page, ctx);
+  for (const post of posts) files[`posts/${post.slug}/index.html`] = postPage(post, ctx);
+
+  await Promise.all([
+    ...Object.entries(files).map(([file, contents]) => write(join(outDir, file), contents)),
+    cp(paths.editor, join(outDir, "editor/index.html")),
+    // The editor previews Markdown with the same parser the build uses.
+    ...Object.entries(editorVendor).map(([file, specifier]) =>
+      cp(fileURLToPath(import.meta.resolve(specifier)), join(outDir, "vendor", file)),
+    ),
+  ]);
+
+  return { posts: posts.length, pages: contentPages.length };
+}
+
+if (import.meta.main) {
+  const { values } = parseArgs({
+    options: {
+      out: { type: "string" },
+      origin: { type: "string" },
+      drafts: { type: "boolean", default: false },
+    },
+  });
+  const { posts, pages } = await build({
+    outDir: values.out,
+    // `||` so an empty SITE_URL falls back to the default, as before.
+    origin: values.origin || process.env.SITE_URL || site.defaultOrigin,
+    includeDrafts: values.drafts,
+  });
+  console.log(`Built ${posts} posts and ${pages} pages.`);
+}
