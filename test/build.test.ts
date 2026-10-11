@@ -21,8 +21,12 @@ describe("build", () => {
     const posts = await loadPosts("content/posts");
     assert.ok(posts.length > 0);
     for (const post of posts) {
-      const page = await read(`posts/${post.slug}/index.html`);
-      assert.ok(page.includes(`<link rel="canonical" href="${origin}/posts/${post.slug}/"`));
+      const path = `/posts/${post.slug}/${post.language === "ru" ? "ru/" : ""}`;
+      const page = await read(`${path.slice(1)}index.html`);
+      assert.ok(page.includes(`<link rel="canonical" href="${origin}${path}"`));
+      assert.ok(page.includes(`<html lang="${post.language}">`));
+      assert.ok((await read("feed.xml")).includes(`${origin}${path}`));
+      assert.ok((await read("sitemap.xml")).includes(`${origin}${path}`));
     }
   });
 

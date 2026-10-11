@@ -74,7 +74,7 @@ draft: false
 Your Markdown here.
 ```
 
-- The filename becomes the URL (`/posts/my-note/`) and must use lowercase letters, numbers and hyphens.
+- The filename stem becomes the URL (`/posts/my-note/`) and must use lowercase letters, numbers and hyphens. Posts may end in `.en.md` or `.ru.md`; see below.
 - `title`, `description` and `date` are required; `date` must be a real `YYYY-MM-DD` date. Quoting values is recommended.
 - `draft: true` (unquoted) keeps a post out of the build, RSS and sitemap. `npm run dev` shows drafts with a "Draft" label. Drafts with valid YAML skip field validation in production, so required fields can be unfinished. In dev, drafts with invalid fields are skipped with a warning. Malformed YAML always stops the build.
 - Invalid published content stops the build with an error naming the file, and the previous `dist/` is left untouched.
@@ -82,6 +82,21 @@ Your Markdown here.
 - Put images in `public/images/` and reference `/images/example.png`.
 
 The opening post is published by default. Edit it, remove it, or add `draft: true` before publishing if it is still a placeholder.
+
+## Post translations
+
+Use the same filename stem for each version:
+
+| File                            | Language | URL                  |
+| ------------------------------- | -------- | -------------------- |
+| `my-note.md` or `my-note.en.md` | English  | `/posts/my-note/`    |
+| `my-note.ru.md`                 | Russian  | `/posts/my-note/ru/` |
+
+The filename determines the language; no language front matter is needed. Each version has its own title, description, date, body, and draft status. Unsupported suffixes and duplicate versions (such as both `my-note.md` and `my-note.en.md`) fail the build. A translation can exist without an English version.
+
+The homepage lists each post once, preferring English when available, and links its available translations. Article pages link translations and emit their own canonical URL, HTML language, and reciprocal `hreflang` metadata. RSS and sitemap include every published version. Draft translations appear only in development output. The site navigation remains English.
+
+The editor accepts filename stems such as `my-note.en` and `my-note.ru` and preserves them when reopening and downloading files.
 
 ## Add a page
 

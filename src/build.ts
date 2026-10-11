@@ -49,7 +49,7 @@ export async function build({
     "robots.txt": robotsTxt(ctx),
   };
   for (const page of contentPages) files[`${page.slug}/index.html`] = contentPage(page, ctx);
-  for (const post of posts) files[`posts/${post.slug}/index.html`] = postPage(post, ctx);
+  for (const post of posts) files[`${postPath(post).slice(1)}index.html`] = postPage(post, ctx, posts);
 
   await Promise.all([
     ...Object.entries(files).map(([file, contents]) => write(join(outDir, file), contents)),

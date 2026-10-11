@@ -53,14 +53,19 @@
       <h1>Write a note.</h1>
       <p>
         This local workbench previews Markdown and downloads a post file. To publish, commit it to
-        <code>content/posts/</code> and rebuild. Files stay in your browser; nothing is uploaded.
+        <code>content/posts/</code> and rebuild. Files stay in your browser; nothing is uploaded. Use the same filename
+        stem with .en or .ru for translations.
       </p>
       <label>Open Markdown file<input id="file" type="file" accept=".md,text/markdown" /></label>
       <div class="grid">
         <section>
           <label>Title<input id="title" value="A new note" /></label><label>Date<input id="date" type="date" /></label
           ><label>Description<input id="description" value="A short description of this note." /></label
-          ><label>Filename / URL slug<input id="slug" value="a-new-note" pattern="[a-z0-9]+(-[a-z0-9]+)*" /></label
+          ><label
+            >Filename stem / URL slug<input
+              id="slug"
+              value="a-new-note"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*(\.(en|ru))?" /></label
           ><label
             >Markdown<textarea id="body">
 ## Start with a question
@@ -115,12 +120,12 @@ What are you thinking about?</textarea></label
     $("download").onclick = () => {
       const slug = $("slug").value;
       if (
-        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ||
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.(?:en|ru))?$/.test(slug) ||
         !$("title").value.trim() ||
         !$("date").value ||
         !$("description").value.trim()
       ) {
-        $("status").textContent = "Complete the fields and use a lowercase slug with hyphens.";
+        $("status").textContent = "Complete the fields and use a lowercase slug with hyphens and optional .en or .ru suffix.";
         return;
       }
       const data = { ...frontMatter, title: $("title").value, date: $("date").value, description: $("description").value };

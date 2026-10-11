@@ -15,7 +15,11 @@ const common = {
   draft: z.boolean({ error: "must be true or false" }).default(false),
 };
 
-const postSchema = z.object({ ...common, date: z.iso.date({ error: "must be a real YYYY-MM-DD date" }) });
+const postSchema = z.object({
+  ...common,
+  language: z.enum(["en", "ru"]),
+  date: z.iso.date({ error: "must be a real YYYY-MM-DD date" }),
+});
 
 /** Page slugs that would collide with generated output. */
 const reservedPageSlugs = ["posts", "editor", "vendor", "index", "404", "feed", "sitemap", "robots"];
@@ -54,9 +58,13 @@ function readFrontMatter(file: string, source: string): FrontMatter {
   }
 }
 
-function validate<T extends z.ZodType>(schema: T, { file, data }: FrontMatter): z.output<T> {
+function validate<T extends z.ZodType>(
+  schema: T,
+  { file, data }: FrontMatter,
+  identity: { slug: string; language?: "en" | "ru" } = { slug: basename(file, ".md") },
+): z.output<T> {
   // The filename is the slug; it wins over any `slug` key in the front matter.
-  const result = schema.safeParse({ ...data, slug: basename(file, ".md") });
+  const result = schema.safeParse({ ...data, ...identity });
   if (result.success) return result.data;
   throw new ContentError(
     file,
@@ -70,7 +78,17 @@ export function readingMinutes(markdown: string): number {
 }
 
 function toPost(entry: FrontMatter): Post {
-  return { ...validate(postSchema, entry), body: entry.body, minutes: readingMinutes(entry.body) };
+  const name = basename(entry.file, ".md");
+  const parts = name.split(".");
+  const language = parts.length === 1 ? "en" : parts.pop()!;
+  if (language !== "en" && language !== "ru") {
+    throw new ContentError(entry.file, "language: filename suffix must be .en.md or .ru.md");
+  }
+  return {
+    ...validate(postSchema, entry, { slug: parts.join("."), language }),
+    body: entry.body,
+    minutes: readingMinutes(entry.body),
+  };
 }
 
 function toPage(entry: FrontMatter): Page {
@@ -106,7 +124,15 @@ async function loadDir<T>(dir: string, convert: (entry: FrontMatter) => T, inclu
 /** Loads posts newest first. */
 export async function loadPosts(dir: string, { includeDrafts = false } = {}): Promise<Post[]> {
   const posts = await loadDir(dir, toPost, includeDrafts);
-  return posts.sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
+  const seen = new Set<string>();
+  for (const post of posts) {
+    const key = `${post.slug}.${post.language}`;
+    if (seen.has(key)) throw new ContentError(key, "duplicate post language; use either .md or .en.md for English");
+    seen.add(key);
+  }
+  return posts.sort(
+    (a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug) || a.language.localeCompare(b.language),
+  );
 }
 
 /** Loads pages ordered by nav position, then slug. */

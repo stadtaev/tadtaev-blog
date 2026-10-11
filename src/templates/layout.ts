@@ -6,6 +6,8 @@ export type PageMeta = {
   description: string;
   /** Site-relative path, e.g. "/posts/my-note/". */
   path: string;
+  language?: "en" | "ru";
+  alternates?: { language: "en" | "ru"; path: string }[];
 };
 
 export type NavItem = { href: string; label: string };
@@ -27,7 +29,7 @@ export function layout(meta: PageMeta, body: SafeHtml, { origin, nav }: RenderCo
   const ogType = meta.path.startsWith("/posts/") ? "article" : "website";
 
   return html`<!doctype html>
-<html lang="en">
+<html lang="${meta.language ?? "en"}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -35,6 +37,7 @@ export function layout(meta: PageMeta, body: SafeHtml, { origin, nav }: RenderCo
     <meta name="description" content="${meta.description}">
     <meta name="color-scheme" content="light dark">
     <link rel="canonical" href="${url}">
+    ${meta.alternates?.map((item) => html`<link rel="alternate" hreflang="${item.language}" href="${origin + item.path}">`)}
     <meta property="og:title" content="${meta.title}">
     <meta property="og:description" content="${meta.description}">
     <meta property="og:type" content="${ogType}">
