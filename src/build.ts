@@ -1,6 +1,5 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { editorVendor, paths, site } from "./config.ts";
 import { loadPages, loadPosts } from "./content.ts";
@@ -57,7 +56,7 @@ export async function build({
     cp(paths.editor, join(outDir, "editor/index.html")),
     // The editor previews Markdown with the same parser the build uses.
     ...Object.entries(editorVendor).map(([file, specifier]) =>
-      cp(fileURLToPath(import.meta.resolve(specifier)), join(outDir, "vendor", file)),
+      cp(new URL(import.meta.resolve(specifier)), join(outDir, "vendor", file)),
     ),
   ]);
 

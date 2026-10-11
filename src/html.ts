@@ -10,7 +10,7 @@ type Interpolation = SafeHtml | string | number | boolean | null | undefined | r
 
 const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
-export function escape(text: string): string {
+function escape(text: string): string {
   return text.replace(/[&<>"']/g, (c) => entities[c]!);
 }
 

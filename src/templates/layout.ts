@@ -70,7 +70,7 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-export const formatDate = (isoDate: string): string => dateFormat.format(new Date(`${isoDate}T12:00:00Z`));
+const formatDate = (isoDate: string): string => dateFormat.format(new Date(`${isoDate}T12:00:00Z`));
 
 export function postMeta(post: { date: string; minutes: number }): SafeHtml {
   return html`<div class="meta"><time datetime="${post.date}">${formatDate(post.date)}</time><span>${post.minutes} min read</span></div>`;
