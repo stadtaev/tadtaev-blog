@@ -6,13 +6,18 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "node --watch-path=content --watch-path=public --watch-path=src src/build.ts --drafts --out .dev --origin http://localhost:4321 & serve .dev --listen 4321 --no-clipboard --no-request-logging --no-port-switching",
+    "dev": "concurrently --kill-others --names build,serve \"npm:dev:build\" \"npm:dev:serve\"",
+    "dev:build": "node --watch-path=content --watch-path=public --watch-path=src src/build.ts --drafts --out .dev --origin http://localhost:4321",
+    "dev:serve": "serve .dev --listen 4321 --no-clipboard --no-request-logging --no-port-switching",
     "build": "node src/build.ts",
+    "preview": "serve dist --listen 4321 --no-clipboard --no-request-logging --no-port-switching",
     "check": "tsc --noEmit",
     "test": "node --test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run check && npm run format:check && npm test && npm run build"
+    "verify": "npm run check && npm run format:check && npm test && npm run build",
+    "predev": "node scripts/check-port.ts",
+    "prepreview": "node scripts/check-port.ts"
   },
   "dependencies": {
     "@11ty/gray-matter": "3.0.0",
@@ -23,11 +28,14 @@
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "concurrently": "10.0.6",
     "prettier": "3.9.10",
     "serve": "14.2.6",
     "typescript": "7.0.2"
   },
   "overrides": {
     "compression": "1.8.2"
-  }
+  },
+  "description": "A small TypeScript static builder for tadtaev.dev.",
+  "license": "MIT"
 }

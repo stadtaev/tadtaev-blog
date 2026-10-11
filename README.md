@@ -2,14 +2,62 @@
 
 A small TypeScript static blog, with handwritten CSS. No framework, theme engine, database, or runtime server.
 
+## Quick start
+
+Requires Node 24 and npm. The `.node-version` file records the supported development version.
+
+```sh
+npm ci
+npm run dev
+```
+
+Open <http://localhost:4321>. Changes to `content/`, `public/`, and `src/` rebuild the site; refresh your browser manually. Drafts are included in development. Stop both processes with Ctrl+C. The development commands run through `concurrently`, including on Windows.
+
 ## Commands
 
-Requires Node 24. Run `npm ci` once, then:
+| Command                | Purpose                                                            |
+| ---------------------- | ------------------------------------------------------------------ |
+| `npm run dev`          | Watch content and source, and serve `.dev/`.                       |
+| `npm run build`        | Generate production output in `dist/`, excluding drafts.           |
+| `npm run preview`      | Serve an existing `dist/` build locally. Run the build first.      |
+| `npm run check`        | Type-check TypeScript without emitting files.                      |
+| `npm test`             | Run the test suite.                                                |
+| `npm run format`       | Apply Prettier formatting.                                         |
+| `npm run format:check` | Check formatting without changing files.                           |
+| `npm run verify`       | Run type checks, formatting checks, tests, and a production build. |
 
-- `npm run dev` — preview at `http://localhost:4321` with drafts included. Rebuilds whenever `content/`, `public/` or `src/` changes; refresh the browser to see it. If a build fails, the last good version keeps being served. Uses a POSIX shell (`&`), so on Windows run it from WSL or Git Bash.
-- `npm run build` — build the site into `dist/`. Serve `dist/` with any static host. Links use `SITE_URL` (default `https://tadtaev.dev`).
-- `npm test` — run the tests.
-- `npm run verify` — type-check, format check, tests and build; this is what CI runs. `npm run format` fixes formatting.
+Both local servers use port 4321 and fail if it is occupied. Run development and production preview separately.
+
+Build options are passed after `--`:
+
+```sh
+npm run build -- --out dist --origin https://example.com
+npm run build -- --drafts --out .dev
+```
+
+The origin comes from `--origin`, then `SITE_URL`, then `https://tadtaev.dev`. Empty values fall back to the next source. A trailing slash is removed. `--drafts` is for local review; do not publish that output.
+
+Content parsing and validation finish before the output directory is replaced. Content errors preserve the previous build; later rendering or filesystem errors can leave incomplete output.
+
+## Project structure
+
+```text
+content/
+  pages/          Standalone Markdown pages
+  posts/          Markdown posts; filenames become slugs
+public/           Static assets copied into the output
+scripts/          Local development port check
+src/
+  build.ts        Build orchestrator and CLI
+  config.ts       Site settings and paths
+  content.ts      Front matter parsing and validation
+  html.ts         Escaped HTML template helpers
+  editor/         Local Markdown workbench
+  templates/      Page layouts and feeds
+test/             Content, HTML, build, and regression tests
+```
+
+`dist/` and `.dev/` are generated and ignored by Git. Reading pages require no runtime server or browser JavaScript.
 
 ## Write a post
 
@@ -28,12 +76,12 @@ Your Markdown here.
 
 - The filename becomes the URL (`/posts/my-note/`) and must use lowercase letters, numbers and hyphens.
 - `title`, `description` and `date` are required; `date` must be a real `YYYY-MM-DD` date. Quoting values is recommended.
-- `draft: true` (unquoted) keeps a post out of the build, RSS and sitemap. `npm run dev` shows drafts with a "Draft" label. Drafts are not checked in production builds, so an unfinished draft never breaks a build; in dev, an incomplete draft is skipped with a warning.
+- `draft: true` (unquoted) keeps a post out of the build, RSS and sitemap. `npm run dev` shows drafts with a "Draft" label. Drafts with valid YAML skip field validation in production, so required fields can be unfinished. In dev, drafts with invalid fields are skipped with a warning. Malformed YAML always stops the build.
 - Invalid published content stops the build with an error naming the file, and the previous `dist/` is left untouched.
 - Markdown is trusted repository content: only commit files you have reviewed (raw HTML is supported).
 - Put images in `public/images/` and reference `/images/example.png`.
 
-The opening post is a starter draft written for this site; edit or remove it before making the site public.
+The opening post is published by default. Edit it, remove it, or add `draft: true` before publishing if it is still a placeholder.
 
 ## Add a page
 
@@ -60,7 +108,7 @@ The About page is `content/pages/about.md`.
 
 - Design: `public/style.css`.
 - Page structure: `src/templates/` (`layout.ts` for the shared header and footer, `pages.ts` for page bodies, `feeds.ts` for RSS, sitemap and robots.txt).
-- Site name, description and reading speed: `src/config.ts`.
+- Author, metadata description, default origin, and reading speed: `src/config.ts`. The wordmark and introductory copy are in the templates.
 - Front matter rules: `src/content.ts`.
 
 ## Editor
@@ -77,4 +125,10 @@ Alternatively use the DNS records returned by Sites' custom-domain registration.
 
 ## Deliberately small
 
-RSS at `/feed.xml`, sitemap at `/sitemap.xml`, responsive layouts, system dark mode, and readable article pages. No browser JavaScript on reading pages, analytics, remote fonts, or cookies. Runtime dependencies: `marked` (Markdown), `@11ty/gray-matter` (front matter), `zod` (front matter validation), and `dompurify` and `js-yaml` for the editor.
+RSS at `/feed.xml`, sitemap at `/sitemap.xml`, responsive layouts, system dark mode, and readable article pages. No browser JavaScript on reading pages, analytics, remote fonts, or cookies. Dependencies: `marked` (Markdown), `@11ty/gray-matter` (front matter), `zod` (front matter validation), and `dompurify` and `js-yaml` for the editor.
+
+## License
+
+The builder code, tests, configuration, and reusable styles are licensed under the [MIT License](LICENSE).
+
+Posts and pages in `content/`, personal images and other non-code assets in `public/`, and personal branding are excluded from the MIT grant. All rights to that material are reserved unless a file states otherwise. Dependency licenses remain their own.
