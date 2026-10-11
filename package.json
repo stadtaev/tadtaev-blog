@@ -1,0 +1,1 @@
+{"name":"tadtaev-blog","private":true,"type":"module","scripts":{"build":"node src/build.ts","check":"tsc --noEmit"},"dependencies":{"gray-matter":"4.0.3","marked":"15.0.12"},"devDependencies":{"@types/node":"24.0.0","typescript":"5.8.3"}}
