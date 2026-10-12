@@ -7,7 +7,7 @@ import { loadPosts, parsePost } from "../src/content.ts";
 import { homePage, postPage, postPath } from "../src/templates/pages.ts";
 
 const source = '---\ntitle: "Title"\ndate: "2026-10-12"\ndescription: "Description"\n---\nBody';
-const ctx = { origin: "https://example.test", nav: [] };
+const ctx = { origin: "https://example.test", nav: [], year: 2026 };
 it("keeps English URLs and gives Russian translations distinct URLs", () => {
   assert.equal(postPath(parsePost("note.md", source)), "/posts/note/");
   assert.equal(postPath(parsePost("note.en.md", source)), "/posts/note/");
@@ -45,4 +45,14 @@ it("does not link draft translations in production", async () => {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+it("renders article text and dates in the post's language", () => {
+  const ru = postPage(parsePost("note.ru.md", source), ctx);
+  assert.match(ru, /12 октября 2026/);
+  assert.match(ru, /1 мин чтения/);
+  assert.match(ru, /Спасибо за чтение\./);
+  assert.doesNotMatch(ru, /min read|Thanks for reading/);
+  const en = postPage(parsePost("note.md", source), ctx);
+  assert.match(en, /12 October 2026/);
+  assert.match(en, /1 min read/);
 });

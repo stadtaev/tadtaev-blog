@@ -49,10 +49,9 @@ public/           Static assets copied into the output
 scripts/          Local development port check
 src/
   build.ts        Build orchestrator and CLI
-  config.ts       Site settings and paths
+  config.ts       Site settings, branding, languages and UI text
   content.ts      Front matter parsing and validation
   html.ts         Escaped HTML template helpers
-  editor/         Local Markdown workbench
   templates/      Page layouts and feeds
 test/             Content, HTML, build, and regression tests
 ```
@@ -80,6 +79,7 @@ Your Markdown here.
 - Invalid published content stops the build with an error naming the file, and the previous `dist/` is left untouched.
 - Markdown is trusted repository content: only commit files you have reviewed (raw HTML is supported).
 - Put images in `public/images/` and reference `/images/example.png`.
+- In VS Code, type `post` (or `page`) and press Ctrl+Space in an empty Markdown file to insert the front matter (`.vscode/markdown.code-snippets`). Preview with `npm run dev`.
 
 The opening post is published by default. Edit it, remove it, or add `draft: true` before publishing if it is still a placeholder.
 
@@ -94,9 +94,9 @@ Use the same filename stem for each version:
 
 The filename determines the language; no language front matter is needed. Each version has its own title, description, date, body, and draft status. Unsupported suffixes and duplicate versions (such as both `my-note.md` and `my-note.en.md`) fail the build. A translation can exist without an English version.
 
-The homepage lists each post once, preferring English when available, and links its available translations. Article pages link translations and emit their own canonical URL, HTML language, and reciprocal `hreflang` metadata. RSS and sitemap include every published version. Draft translations appear only in development output. The site navigation remains English.
+The homepage lists each post once, preferring English when available, and links its available translations. Article pages link translations and emit their own canonical URL, HTML language, and reciprocal `hreflang` metadata. RSS and sitemap include every published version. Draft translations appear only in development output. Article text (date, reading time, back links) uses the post's language; the site navigation, homepage and footer use the default language.
 
-The editor accepts filename stems such as `my-note.en` and `my-note.ru` and preserves them when reopening and downloading files.
+Languages, their labels, date locales and UI strings are defined in `languages` in `src/config.ts`. Adding a language there makes its filename suffix valid.
 
 ## Add a page
 
@@ -115,20 +115,16 @@ Your Markdown here.
 - `title` and `description` are required.
 - `nav` (a number) links the page from the header; lower numbers come first. Leave it out to keep the page off the header.
 - Optional: `heading` (the large heading; defaults to the title), `eyebrow` (small label above it), `draft`.
-- Names used by generated files (`posts`, `editor`, `vendor`, `index`, `404`, `feed`, `sitemap`, `robots`) are rejected.
+- Names used by generated files (`posts`, `index`, `404`, `feed`, `sitemap`, `robots`) are rejected.
 
 The About page is `content/pages/about.md`.
 
 ## Change the site
 
-- Design: `public/style.css`.
+- Design: `public/style.css`. Colours (light and dark), fonts and widths are variables at the top.
 - Page structure: `src/templates/` (`layout.ts` for the shared header and footer, `pages.ts` for page bodies, `feeds.ts` for RSS, sitemap and robots.txt).
-- Author, metadata description, default origin, and reading speed: `src/config.ts`. The wordmark and introductory copy are in the templates.
+- Author, wordmark, tagline, homepage intro, metadata description, default origin, reading speed, languages and UI text: `src/config.ts`.
 - Front matter rules: `src/content.ts`.
-
-## Editor
-
-The `/editor/` workbench opens local Markdown, previews it safely, and downloads post files, keeping any extra front matter such as `draft: true`. It does not upload, store, authenticate, or publish posts. Publishing happens through Git and a build.
 
 ## Hosting and CI
 
@@ -140,7 +136,7 @@ Alternatively use the DNS records returned by Sites' custom-domain registration.
 
 ## Deliberately small
 
-RSS at `/feed.xml`, sitemap at `/sitemap.xml`, responsive layouts, system dark mode, and readable article pages. No browser JavaScript on reading pages, analytics, remote fonts, or cookies. Dependencies: `marked` (Markdown), `@11ty/gray-matter` (front matter), `zod` (front matter validation), and `dompurify` and `js-yaml` for the editor.
+RSS at `/feed.xml`, sitemap at `/sitemap.xml`, responsive layouts, system dark mode, and readable article pages. No browser JavaScript on reading pages, analytics, remote fonts, or cookies. Dependencies: `marked` (Markdown), `@11ty/gray-matter` (front matter), and `zod` (front matter validation).
 
 ## License
 

@@ -40,5 +40,5 @@ export function sitemap(paths: string[], { origin }: RenderContext): string {
 }
 
 export function robotsTxt({ origin }: RenderContext): string {
-  return `User-agent: *\nAllow: /\nDisallow: /editor/\nSitemap: ${origin}/sitemap.xml\n`;
+  return `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`;
 }

@@ -1,0 +1,31 @@
+{
+  "Post front matter": {
+    "scope": "markdown",
+    "prefix": "post",
+    "description": "Front matter for content/posts/<slug>.md (or <slug>.ru.md)",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "date: \"${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}\"",
+      "description: \"${2:A short description.}\"",
+      "draft: true",
+      "---",
+      "",
+      "$0",
+    ],
+  },
+  "Page front matter": {
+    "scope": "markdown",
+    "prefix": "page",
+    "description": "Front matter for content/pages/<slug>.md",
+    "body": [
+      "---",
+      "title: \"${1:Title}\"",
+      "description: \"${2:A short description.}\"",
+      "nav: ${3:2}",
+      "---",
+      "",
+      "$0",
+    ],
+  },
+}

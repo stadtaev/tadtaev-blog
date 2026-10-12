@@ -30,7 +30,7 @@ describe("build", () => {
     }
   });
 
-  it("writes the static pages, feeds and editor assets", async () => {
+  it("writes the static pages and feeds", async () => {
     for (const file of [
       "index.html",
       "about/index.html",
@@ -39,10 +39,6 @@ describe("build", () => {
       "sitemap.xml",
       "robots.txt",
       "style.css",
-      "editor/index.html",
-      "vendor/marked.js",
-      "vendor/purify.js",
-      "vendor/js-yaml.js",
     ]) {
       assert.ok(await read(file), `${file} is empty`);
     }

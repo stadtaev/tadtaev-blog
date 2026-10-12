@@ -47,7 +47,7 @@ describe("parsePage", () => {
   it("renders the title as heading by default and leaves the page out of the nav", () => {
     const parsed = parsePage("uses.md", page);
     assert.equal(parsed.slug, "uses");
-    assert.match(contentPage(parsed, { origin: "", nav: [] }), /<h1>Uses<span class="dot">/);
+    assert.match(contentPage(parsed, { origin: "", nav: [], year: 2026 }), /<h1>Uses<span class="dot">/);
     assert.equal(parsed.nav, undefined);
     assert.equal(parsed.eyebrow, undefined);
   });

@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import { site } from "../config.ts";
+import { defaultLanguage, languages, site } from "../config.ts";
 import type { Page, Post } from "../content.ts";
 import { html, raw, type SafeHtml } from "../html.ts";
 import { layout, postMeta, type RenderContext } from "./layout.ts";
@@ -12,7 +12,13 @@ function markdown(source: string): SafeHtml {
 export const postPath = (post: Post): string => `/posts/${post.slug}/${post.language === "ru" ? "ru/" : ""}`;
 export const pagePath = (page: Page): string => `/${page.slug}/`;
 
-const draftBadge = (item: Post | Page) => (item.draft ? html` <span>Draft</span>` : "");
+const ui = languages[defaultLanguage].strings;
+
+const draftBadge = (item: Post | Page) => (item.draft ? html` <span>${ui.draft}</span>` : "");
+
+/** Joins lines with a line break that only shows on wide screens. */
+const desktopLines = (lines: readonly string[]) =>
+  lines.map((line, i) => (i === 0 ? line : html`<br class="desktop"> ${line}`));
 
 function versions(post: Post, posts: Post[]): Post[] {
   return posts.filter((item) => item.slug === post.slug).sort((a, b) => a.language.localeCompare(b.language));
@@ -21,19 +27,19 @@ function versions(post: Post, posts: Post[]): Post[] {
 function languageLinks(post: Post, posts: Post[]): SafeHtml | string {
   const translations = versions(post, posts);
   if (translations.length < 2) return "";
-  return html`<p class="meta">${translations.map((item) => html`<a href="${postPath(item)}" hreflang="${item.language}" lang="${item.language}">${item.language === "en" ? "English" : "Русский"}</a>`)}</p>`;
+  return html`<p class="meta">${translations.map((item) => html`<a href="${postPath(item)}" hreflang="${item.language}" lang="${item.language}">${languages[item.language].label}</a>`)}</p>`;
 }
 
 export function homePage(posts: Post[], ctx: RenderContext): string {
   const preferred = new Map<string, Post>();
   for (const post of posts) {
-    if (!preferred.has(post.slug) || post.language === "en") preferred.set(post.slug, post);
+    if (!preferred.has(post.slug) || post.language === defaultLanguage) preferred.set(post.slug, post);
   }
   const entries = [...preferred.values()].sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
   const rows = entries.map(
     (post) => html`
       <article class="post">
-        ${postMeta(post)}
+        ${postMeta(post, defaultLanguage)}
         <h2 lang="${post.language}"><a href="${postPath(post)}">${post.title}</a>${draftBadge(post)}</h2>
         <p lang="${post.language}">${post.description}</p>
         ${languageLinks(post, posts)}
@@ -42,29 +48,30 @@ export function homePage(posts: Post[], ctx: RenderContext): string {
 
   const body = html`
     <section class="intro">
-      <p class="eyebrow">A PERSONAL NOTEBOOK</p>
+      <p class="eyebrow">${site.home.eyebrow}</p>
       <h1>${site.author}<span class="dot">.</span></h1>
-      <p class="lede">Notes on software, systems,<br class="desktop"> and making knowledge useful.</p>
-      <p class="intro-note">A software engineer thinking out loud about architecture,<br class="desktop"> .NET, TypeScript, and AI-assisted engineering.</p>
+      <p class="lede">${desktopLines(site.home.lede)}</p>
+      <p class="intro-note">${desktopLines(site.home.note)}</p>
     </section>
     <section aria-label="Recent writing">
-      <div class="section-label"><span>WRITING</span><span>${String(entries.length).padStart(2, "0")} NOTES</span></div>
-      ${posts.length ? rows : html`<p>No published notes yet.</p>`}
+      <div class="section-label"><span>${ui.writingLabel}</span><span>${String(entries.length).padStart(2, "0")} ${ui.notesLabel}</span></div>
+      ${posts.length ? rows : html`<p>${ui.noNotes}</p>`}
     </section>`;
 
   return layout({ title: site.author, description: site.description, path: "/" }, body, ctx);
 }
 
 export function postPage(post: Post, ctx: RenderContext, posts: Post[] = [post]): string {
+  const strings = languages[post.language].strings;
   const body = html`
-    <a class="back" href="/">← All writing</a>
+    <a class="back" href="/">${strings.allWriting}</a>
     <article class="reading">
-      ${postMeta(post)}
+      ${postMeta(post, post.language)}
       ${languageLinks(post, posts)}
       <h1>${post.title}</h1>
       <p class="article-description">${post.description}</p>
       <div class="prose">${markdown(post.body)}</div>
-      <div class="article-end">Thanks for reading.<br><a href="/">← Back to the notebook</a></div>
+      <div class="article-end">${strings.thanks}<br><a href="/">${strings.backToNotebook}</a></div>
     </article>`;
 
   return layout(
@@ -91,13 +98,9 @@ export function contentPage(page: Page, ctx: RenderContext): string {
 
 export function notFoundPage(ctx: RenderContext): string {
   const body = html`
-    <h1>Nothing here. Yet.</h1>
-    <p>The page may have moved.</p>
-    <a href="/">← Back to writing</a>`;
+    <h1>${ui.notFoundHeading}</h1>
+    <p>${ui.notFoundText}</p>
+    <a href="/">${ui.notFoundBack}</a>`;
 
-  return layout(
-    { title: "Page not found", description: "This page could not be found.", path: "/404.html" },
-    body,
-    ctx,
-  );
+  return layout({ title: ui.notFoundTitle, description: ui.notFoundDescription, path: "/404.html" }, body, ctx);
 }

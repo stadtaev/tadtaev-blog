@@ -2,7 +2,7 @@ import { glob, readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import matter from "@11ty/gray-matter";
 import { z } from "zod";
-import { site } from "./config.ts";
+import { defaultLanguage, languages, site, type Language } from "./config.ts";
 
 const text = z
   .string({ error: "must be a non-empty string" })
@@ -17,12 +17,12 @@ const common = {
 
 const postSchema = z.object({
   ...common,
-  language: z.enum(["en", "ru"]),
+  language: z.enum(Object.keys(languages) as [Language, ...Language[]]),
   date: z.iso.date({ error: "must be a real YYYY-MM-DD date" }),
 });
 
 /** Page slugs that would collide with generated output. */
-const reservedPageSlugs = ["posts", "editor", "vendor", "index", "404", "feed", "sitemap", "robots"];
+const reservedPageSlugs = ["posts", "index", "404", "feed", "sitemap", "robots"];
 
 const pageSchema = z.object({
   ...common,
@@ -61,7 +61,7 @@ function readFrontMatter(file: string, source: string): FrontMatter {
 function validate<T extends z.ZodType>(
   schema: T,
   { file, data }: FrontMatter,
-  identity: { slug: string; language?: "en" | "ru" } = { slug: basename(file, ".md") },
+  identity: { slug: string; language?: Language } = { slug: basename(file, ".md") },
 ): z.output<T> {
   // The filename is the slug; it wins over any `slug` key in the front matter.
   const result = schema.safeParse({ ...data, ...identity });
@@ -80,12 +80,13 @@ export function readingMinutes(markdown: string): number {
 function toPost(entry: FrontMatter): Post {
   const name = basename(entry.file, ".md");
   const parts = name.split(".");
-  const language = parts.length === 1 ? "en" : parts.pop()!;
-  if (language !== "en" && language !== "ru") {
-    throw new ContentError(entry.file, "language: filename suffix must be .en.md or .ru.md");
+  const language = parts.length === 1 ? defaultLanguage : parts.pop()!;
+  if (!Object.hasOwn(languages, language)) {
+    const suffixes = Object.keys(languages).map((key) => `.${key}.md`);
+    throw new ContentError(entry.file, `language: filename suffix must be one of ${suffixes.join(", ")}`);
   }
   return {
-    ...validate(postSchema, entry, { slug: parts.join("."), language }),
+    ...validate(postSchema, entry, { slug: parts.join("."), language: language as Language }),
     body: entry.body,
     minutes: readingMinutes(entry.body),
   };
@@ -127,7 +128,11 @@ export async function loadPosts(dir: string, { includeDrafts = false } = {}): Pr
   const seen = new Set<string>();
   for (const post of posts) {
     const key = `${post.slug}.${post.language}`;
-    if (seen.has(key)) throw new ContentError(key, "duplicate post language; use either .md or .en.md for English");
+    if (seen.has(key))
+      throw new ContentError(
+        key,
+        `duplicate post language; use either .md or .${defaultLanguage}.md for the default language`,
+      );
     seen.add(key);
   }
   return posts.sort(

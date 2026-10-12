@@ -1,7 +1,7 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
-import { editorVendor, paths, site } from "./config.ts";
+import { paths, site } from "./config.ts";
 import { loadPages, loadPosts } from "./content.ts";
 import { robotsTxt, rssFeed, sitemap } from "./templates/feeds.ts";
 import type { RenderContext } from "./templates/layout.ts";
@@ -36,6 +36,7 @@ export async function build({
     nav: contentPages
       .filter((page) => page.nav !== undefined)
       .map((page) => ({ href: pagePath(page), label: page.title })),
+    year: Number((published[0]?.date ?? new Date().toISOString()).slice(0, 4)),
   };
 
   await rm(outDir, { recursive: true, force: true });
@@ -51,14 +52,7 @@ export async function build({
   for (const page of contentPages) files[`${page.slug}/index.html`] = contentPage(page, ctx);
   for (const post of posts) files[`${postPath(post).slice(1)}index.html`] = postPage(post, ctx, posts);
 
-  await Promise.all([
-    ...Object.entries(files).map(([file, contents]) => write(join(outDir, file), contents)),
-    cp(paths.editor, join(outDir, "editor/index.html")),
-    // The editor previews Markdown with the same parser the build uses.
-    ...Object.entries(editorVendor).map(([file, specifier]) =>
-      cp(new URL(import.meta.resolve(specifier)), join(outDir, "vendor", file)),
-    ),
-  ]);
+  await Promise.all(Object.entries(files).map(([file, contents]) => write(join(outDir, file), contents)));
 
   return { posts: posts.length, pages: contentPages.length };
 }
